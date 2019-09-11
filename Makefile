@@ -11,17 +11,38 @@ build:
 	docker run --rm --name dev-build \
 		--mount type=bind,source="`pwd`",target=/build \
 		-w="/build" \
-		dev make link
+		dev make os.iso
 
 write_disk:
 	dd if=/dev/zero of=boot.img bs=1024 count=1440
 	dd if=kernel of=boot.img bs=1 count=512 conv=notrunc
 
 clean:
-	-rm -f *.o kernel
+	rm -f *.o kernel.elf os.iso
 
-link: $(SOURCES)
-	ld $(LDFLAGS) -o kernel ${SOURCES}
+kernel.elf: $(SOURCES)
+	ld $(LDFLAGS) -o $@ ${SOURCES}
 
 .s.o:
 	nasm $(ASFLAGS) $<
+
+os.iso: kernel.elf
+#	docker run --rm --name dev-build \
+#                --mount type=bind,source="`pwd`",target=/build \
+#                -w="/build" \
+#                dev genisoimage -R                              
+	mv kernel.elf iso/boot/kernel.elf
+	genisoimage -R \
+                -b boot/grub/stage2_eltorito    \
+                -no-emul-boot                   \
+                -boot-load-size 4               \
+                -A os                           \
+                -input-charset utf8             \
+                -quiet                          \
+                -boot-info-table                \
+                -o $@                           \
+                iso
+
+.PHONY: docker_image
+docker_image:
+	docker build -t dev -f Dockerfile .

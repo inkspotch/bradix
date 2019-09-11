@@ -1,4 +1,4 @@
 
 int main() {
-  return 0xDEADBABA;
+  return 0xbabecafe;
 }
